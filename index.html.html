@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Daily Routine Tracker</title>
+  <style>
+    :root{
+      --bg:#0b0c10;--card:#111217;--muted:#9aa0a6;--text:#e8eaed;--accent:#4fd1c5;--accent-2:#8ab4f8;--ok:#22c55e;--warn:#f59e0b;--danger:#ef4444;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:linear-gradient(180deg,#0b0c10,#0d1117);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;}
+    .wrap{max-width:860px;margin:24px auto;padding:16px}
+    header{display:flex;gap:16px;align-items:center;justify-content:space-between;margin-bottom:16px}
+    .title{font-size:clamp(20px,4vw,28px);font-weight:700;letter-spacing:.3px}
+    .sub{color:var(--muted);font-size:14px}
+    .card{background:var(--card);border:1px solid #1f2330;border-radius:16px;padding:16px;box-shadow:0 8px 20px rgba(0,0,0,.25)}
+    .grid{display:grid;grid-template-columns:1fr;gap:16px}
+    @media(min-width:900px){.grid{grid-template-columns:1.2fr .8fr}}
+    .tasks h3,.stats h3{margin:0 0 10px;font-size:16px;letter-spacing:.2px;color:#cbd5e1}
+    .task{display:flex;align-items:flex-start;gap:12px;padding:12px;border-radius:12px;border:1px solid #1f2330;background:#0f1118}
+    .task time{min-width:70px;color:var(--accent-2);font-variant-numeric:tabular-nums}
+    .task label{flex:1;line-height:1.3}
+    .task small{display:block;color:var(--muted)}
+    input[type=checkbox]{width:20px;height:20px;border-radius:6px;border:2px solid #2b3245;background:#0f1118;appearance:none;position:relative;cursor:pointer}
+    input[type=checkbox]:checked{background:var(--ok);border-color:var(--ok)}
+    input[type=checkbox]:checked::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.75),transparent);border-radius:6px}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .pill{background:#121827;border:1px solid #1f2330;border-radius:999px;padding:8px 12px;color:#cbd5e1;font-size:12px}
+    .progress{height:10px;background:#1b2130;border-radius:999px;overflow:hidden}
+    .progress>div{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-2));width:0%}
+    .btn{background:#141a26;border:1px solid #263041;color:#e2e8f0;padding:10px 14px;border-radius:10px;cursor:pointer;font-weight:600}
+    .btn:hover{filter:brightness(1.08)}
+    .btn.ghost{background:transparent}
+    .stat{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border:1px solid #1f2330;border-radius:12px;background:#0f1118}
+    .muted{color:var(--muted)}
+    .water{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+    .cup{height:48px;border-radius:10px;border:2px solid #2b3245;display:flex;align-items:center;justify-content:center;cursor:pointer;user-select:none;background:#0f1118}
+    .cup.active{border-color:var(--accent);background:#11222a}
+    footer{margin-top:16px;color:var(--muted);font-size:12px;text-align:center}
+    .tag{font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid #334155;color:#cbd5e1}
+    .optional{border-color:#2b2330;background:#0e0b11}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <div class="title">Daily Routine Tracker</div>
+        <div class="sub">Local-only. No server. Data saved in your browser.</div>
+      </div>
+      <div class="row">
+        <button class="btn" id="resetDayBtn" title="Clear today & start fresh">Reset Today</button>
+        <button class="btn ghost" id="exportBtn" title="Download backup JSON">Export</button>
+        <input type="file" id="importFile" accept="application/json" hidden />
+        <button class="btn ghost" id="importBtn" title="Import backup JSON">Import</button>
+      </div>
+    </header>
+
+    <div class="grid">
+      <section class="card tasks">
+        <h3>Today <span class="muted" id="today"></span></h3>
+        <div class="progress" aria-label="Completion">
+          <div id="progressBar"></div>
+        </div>
+        <div class="row" style="margin:10px 0 6px">
+          <span class="pill"><strong id="doneCount">0</strong>/<span id="totalCount">0</span> tasks done</span>
+          <span class="pill">Required tasks count toward streaks</span>
+        </div>
+
+        <div id="taskList"></div>
+
+        <div style="margin-top:10px" class="muted">* Optional tasks don’t affect streaks.</div>
+      </section>
+
+      <aside class="card stats">
+        <h3>Hydration</h3>
+        <div class="muted" style="margin-bottom:8px">Goal: 2 litres (4 × 500ml)</div>
+        <div class="water" id="water"></div>
+        <div class="row" style="margin-top:10px">
+          <span class="pill">Consumed: <strong id="waterMl">0</strong> ml</span>
+          <button class="btn ghost" id="resetWater">Reset Water</button>
+        </div>
+        <hr style="border:0;border-top:1px solid #1f2330;margin:16px 0"/>
+        <h3>Streaks & Stats</h3>
+        <div class="stat"><span>Current streak</span><strong id="streak">0 days</strong></div>
+        <div class="stat"><span>Best streak</span><strong id="bestStreak">0 days</strong></div>
+        <div class="stat"><span>Yesterday complete?</span><strong id="yesterdayStatus">—</strong></div>
+        <div class="stat"><span>Mode</span><span class="tag">LocalStorage</span></div>
+      </aside>
+    </div>
+
+    <footer>
+      Tip: Add this page to your iPhone Home Screen (Safari → Share → Add to Home Screen) to use it like an app.
+    </footer>
+  </div>
+
+  <script>
+    // ---- Configuration: your routine ----
+    const ROUTINE = [
+      { id:"bathroom", time:"06:45", label:"Bathroom Duties", note:"Shower, brush teeth, shave (if needed), moisturize, minoxidil (face & hairline), weigh-in" },
+      { id:"coffee", time:"07:20", label:"Coffee & Get Dressed", note:"Or whitening strips + dress depending on the day", optional:true },
+      { id:"walk_am", time:"07:30", label:"Morning Walk (30 mins)" },
+      { id:"commute", time:"08:00", label:"Drive to Work" },
+      { id:"dinner_prep", time:"17:45", label:"Make Dinner", note:"4 chicken breasts, 100g salmon filet, 200g gammon + 3 eggs or cheese (can split pre/post gym)" },
+      { id:"dog_walk", time:"19:00", label:"Dog Walk (60+ mins)", note:"Incorporate training reps" },
+      { id:"gym_go", time:"20:00", label:"Walk to Gym" },
+      { id:"gym_home", time:"21:00", label:"Walk Home from Gym" },
+      { id:"sleep", time:"22:00", label:"Sleep" },
+      { id:"salt", time:"—", label:"Add salt if sluggish/headache", optional:true }
+    ];
+
+    const WATER_SLOTS = 4; // 4 x 500ml
+
+    // ---- Persistence Keys ----
+    const KEY = {
+      date:"drt.date",
+      tasks:"drt.tasks",
+      water:"drt.water",
+      streak:"drt.streak",
+      best:"drt.best",
+      yDone:"drt.yesterdayComplete"
+    };
+
+    // ---- Helpers ----
+    const todayStr = ()=> new Date().toLocaleDateString(undefined,{weekday:"short", year:"numeric", month:"short", day:"numeric"});
+    const ymd = (d=new Date())=> d.toISOString().slice(0,10);
+
+    function load(key, fallback){
+      try{ const v = localStorage.getItem(key); return v? JSON.parse(v) : fallback; }catch(e){ return fallback; }
+    }
+    function save(key, value){ localStorage.setItem(key, JSON.stringify(value)); }
+
+    // ---- State ----
+    let state = {
+      date: load(KEY.date, ymd()),
+      tasks: load(KEY.tasks, {}),
+      water: load(KEY.water, 0),
+      streak: load(KEY.streak, 0),
+      best: load(KEY.best, 0),
+      yDone: load(KEY.yDone, null)
+    };
+
+    // ---- Day rollover & streak logic ----
+    function requiredTaskIds(){ return ROUTINE.filter(t=>!t.optional).map(t=>t.id); }
+    function allRequiredDone(tasks){ return requiredTaskIds().every(id=> tasks[id]); }
+
+    function rolloverIfNeeded(){
+      const today = ymd();
+      if(state.date !== today){
+        // Evaluate yesterday completion for streaks
+        const yComplete = allRequiredDone(state.tasks);
+        state.yDone = yComplete;
+        if(yComplete){ state.streak = (state.streak||0) + 1; state.best = Math.max(state.best||0, state.streak); }
+        else{ state.streak = 0; }
+        // New day
+        state.date = today;
+        state.tasks = {}; // reset checks
+        state.water = 0;  // reset water
+        save(KEY.yDone, state.yDone);
+        save(KEY.streak, state.streak);
+        save(KEY.best, state.best);
+        save(KEY.date, state.date);
+        save(KEY.tasks, state.tasks);
+        save(KEY.water, state.water);
+      }
+    }
+
+    rolloverIfNeeded();
+
+    // ---- UI Render ----
+    const elToday = document.getElementById('today');
+    const elTaskList = document.getElementById('taskList');
+    const elDone = document.getElementById('doneCount');
+    const elTotal = document.getElementById('totalCount');
+    const elPB = document.getElementById('progressBar');
+    const elStreak = document.getElementById('streak');
+    const elBest = document.getElementById('bestStreak');
+    const elY = document.getElementById('yesterdayStatus');
+    const elWater = document.getElementById('water');
+    const elWaterMl = document.getElementById('waterMl');
+
+    elToday.textContent = todayStr();
+
+    function renderTasks(){
+      elTaskList.innerHTML = '';
+      ROUTINE.forEach(t=>{
+        const wrap = document.createElement('div');
+        wrap.className = 'task' + (t.optional? ' optional':'' );
+        wrap.innerHTML = `
+          <time>${t.time}</time>
+          <input type="checkbox" id="cb_${t.id}" ${state.tasks[t.id]? 'checked':''} />
+          <label for="cb_${t.id}"><strong>${t.label}</strong>${t.note? `<small>${t.note}</small>`:''}${t.optional? ' <span class="tag" style="margin-left:6px">Optional</span>':''}</label>
+        `;
+        elTaskList.appendChild(wrap);
+        wrap.querySelector('input').addEventListener('change', e=>{
+          state.tasks[t.id] = e.target.checked;
+          save(KEY.tasks, state.tasks);
+          updateProgress();
+        });
+      });
+      elTotal.textContent = ROUTINE.length;
+      updateProgress();
+    }
+
+    function updateProgress(){
+      const done = Object.values(state.tasks).filter(Boolean).length;
+      elDone.textContent = done;
+      const pct = Math.round(done / ROUTINE.length * 100);
+      elPB.style.width = pct + '%';
+      elStreak.textContent = (state.streak||0) + ' days';
+      elBest.textContent = (state.best||0) + ' days';
+      elY.textContent = state.yDone==null? '—' : (state.yDone? 'Yes' : 'No');
+    }
+
+    function renderWater(){
+      elWater.innerHTML = '';
+      for(let i=0;i<WATER_SLOTS;i++){
+        const c = document.createElement('div');
+        c.className = 'cup' + (i < state.water ? ' active':'');
+        c.textContent = (i+1);
+        c.title = '500ml';
+        c.addEventListener('click', ()=>{
+          // Toggle up to clicked index
+          state.water = (i+1 === state.water)? i : i+1;
+          save(KEY.water, state.water);
+          renderWater();
+        });
+        elWater.appendChild(c);
+      }
+      elWaterMl.textContent = (state.water * 500).toString();
+    }
+
+    // ---- Controls ----
+    document.getElementById('resetDayBtn').addEventListener('click', ()=>{
+      if(confirm('Reset today\'s checks and water?')){
+        state.tasks = {}; state.water = 0; save(KEY.tasks, state.tasks); save(KEY.water, state.water); renderTasks(); renderWater();
+      }
+    });
+
+    document.getElementById('resetWater').addEventListener('click', ()=>{
+      state.water = 0; save(KEY.water, state.water); renderWater();
+    });
+
+    document.getElementById('exportBtn').addEventListener('click', ()=>{
+      const data = {
+        state,
+        routine: ROUTINE,
+        exportedAt: new Date().toISOString()
+      };
+      const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'daily-routine-tracker-backup.json';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+
+    const importFile = document.getElementById('importFile');
+    document.getElementById('importBtn').addEventListener('click', ()=> importFile.click());
+    importFile.addEventListener('change', (e)=>{
+      const f = e.target.files[0];
+      if(!f) return;
+      const reader = new FileReader();
+      reader.onload = ()=>{
+        try{
+          const data = JSON.parse(reader.result);
+          if(data && data.state){
+            state = data.state; // trust our own schema
+            save(KEY.date, state.date); save(KEY.tasks, state.tasks); save(KEY.water, state.water); save(KEY.streak, state.streak); save(KEY.best, state.best); save(KEY.yDone, state.yDone);
+            rolloverIfNeeded();
+            elToday.textContent = todayStr();
+            renderTasks(); renderWater(); updateProgress();
+            alert('Imported!');
+          } else { alert('Invalid file.'); }
+        }catch(err){ alert('Could not import file.'); }
+      };
+      reader.readAsText(f);
+      e.target.value = '';
+    });
+
+    // ---- Init ----
+    renderTasks();
+    renderWater();
+  </script>
+</body>
+</html>
